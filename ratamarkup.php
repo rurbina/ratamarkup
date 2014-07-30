@@ -200,7 +200,7 @@ function block_normal($data, $arg, $opt = array()) {
 			       'process' => function ($data,$opt) {
 				 $output = '';
 				 foreach (explode("\n",$data) as $line) {
-				   if ( !preg_match('/^(=+)(.*)$/',$line,$matches) ) continue;
+				   if ( !preg_match('/^(=+)(.*?)(=*)$/',$line,$matches) ) continue;
 				   $lvl = strlen($matches[1]) + $opt['header_offset'];
 				   if ( $lvl < 1 ) $lvl = 1;
 				   if ( $lvl > 6 ) $lvl = 6;
@@ -213,6 +213,17 @@ function block_normal($data, $arg, $opt = array()) {
 			       'marker' => '|',
 			       'name' => 'table',
 			       'process' => function ($data,$opt) { return block_normal_table($data,$opt); },
+			       ),
+		  '>' => array(
+			       'marker' => '>',
+			       'name' => 'quote',
+			       'process' => function ($data,$opt) {
+				 print_r($optn);
+				 $data = preg_replace('/^> */m', '', $data);
+				 $text = block_normal($data,array(),$opt);
+				 $output = "<blockquote>\n$text\n</blockquote>\n";
+				 return $output;
+			       },
 			       ),
 		  '!' => array(
 			       'marker' => '!',
@@ -308,7 +319,7 @@ function character_normal($line,$opt = array()) {
 		 '/(?<!\\\\)\\^\\^(.*?)(?<!\\\\)\\^\\^/' => '<sup>$1</sup>',
 		 '/(?<!\\\\)[[]{2}([^<>&|]+?)(?<!\\\\)[]]{2}/'                      => $link_callback,
 		 '/(?<!\\\\)[[]{2}([^<>&]+?)(?<!\\\\)[|]([^<>&]+?)(?<!\\\\)[]]{2}/' => $link_callback,
-		 '/(?<!\\\\)[{]{2}([^<>&]+?)(?<!\\\\)[|](.*?)(?<!\\\\)[}]{2}/' => '<img src="$1" alt="$2" title="$m2">',
+		 '/(?<!\\\\)[{]{2}([^<>&]+?)(?<!\\\\)[|](.*?)(?<!\\\\)[}]{2}/' => '<img src="$1" alt="$2" title="$2">',
 		 '/(?<!\\\\)[{]{2}(.*?)(?<!\\\\)[}]{2}/'                  => '<img src="$1" alt="$1"/>',
 		 '/(?<!\\\\)---/'             => '&mdash;',
 		 '/(?<!\\\\)--/'              => '&ndash;',
