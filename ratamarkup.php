@@ -111,11 +111,12 @@ function block_normal_list($data,$char,$opt=array()) {
 
   if ( $type != ':' ) {
     $processed = preg_replace('!(^|\n)<(/?)p>!','$1<$2li>',$processed);
+    $processed = preg_replace('/^(?!$)/m',"\t",$processed);
 
     if ( $type == '#' )
-      $processed = "<ol>\n$processed\n</ol>\n";
+      $processed = "<li><ol>\n$processed\n</ol></li>\n";
     else
-      $processed = "<ul>\n$processed\n</ul>\n";    
+      $processed = "<li><ul>\n$processed\n</ul></li>\n";
   }
   else {
 
@@ -130,6 +131,8 @@ function block_normal_list($data,$char,$opt=array()) {
 
     $processed = "<dl>\n$processed\n</dl>\n";
   }
+  
+  $processed = preg_replace('#\n+#s',"\n",$processed);
 
   return $processed; 
 }
