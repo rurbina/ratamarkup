@@ -59,20 +59,50 @@ function process($data, $divclass=null, $options = array()) {
 
   foreach ($lines as $line) {
 
-    if ( preg_match('/^§/',$line) ) {
+    if ( preg_match('/^§/u',$line) ) {
 
-      $line = preg_replace('/^§\s+/','',$line);
-      $tokens = preg_split('/\s+/',$line);
+      // check if it's a one-liner, they work differently
+      if ( preg_match('/.+§$/u', $line) ) {
 
-      if ( function_exists('\Ratamarkup\block_'.$current_name) ) {
-	$output .= call_user_func('\Ratamarkup\block_'.$current_name, $accumulator, $current_tokens, $options);
-      } else {
-	$output .= block_normal($accumulator, $current_tokens, $options);
+	$one_liner_line   = preg_replace('/^§\s*|\s*§$/','',$line);
+	$one_liner_tokens = preg_split('/\s+/',$one_liner_line);
+
+	// flush the current one
+	if ( function_exists('\Ratamarkup\block_'.$current_name) ) {
+	  $output .= call_user_func('\Ratamarkup\block_'.$current_name,
+				    $accumulator, $current_tokens, $options);
+	} else {
+	  $output .= block_normal($accumulator, $current_tokens, $options);
+	}
+	$accumulator = "";
+
+	// and flush the one-liner
+	if ( function_exists('\Ratamarkup\block_'.$one_liner_tokens[0]) ) {
+	  $output .= call_user_func('\Ratamarkup\block_'.$one_liner_tokens[0],
+				    '', $one_liner_tokens, $options);
+	}
+	else {
+	  $output .= block_normal('', $one_liner_tokens, $options);
+	}
+
       }
+      else {
 
-      $current_name = preg_replace('/^./u', '', $tokens[0]);
-      $current_tokens = $tokens;
-      $accumulator = '';
+	$line = preg_replace('/^§\s*/','',$line);
+	$tokens = preg_split('/\s+/',$line);
+
+	if ( function_exists('\Ratamarkup\block_'.$current_name) ) {
+	  $output .= call_user_func('\Ratamarkup\block_'.$current_name,
+				    $accumulator, $current_tokens, $options);
+	} else {
+	  $output .= block_normal($accumulator, $current_tokens, $options);
+	}
+
+	$current_name = $tokens[0];
+	$current_tokens = $tokens;
+	$accumulator = '';
+
+      }
 
     }
     else {
@@ -84,7 +114,8 @@ function process($data, $divclass=null, $options = array()) {
   if ( $accumulator != '' ) {
 
       if ( function_exists('\Ratamarkup\block_'.$current_name) ) {
-	$output .= call_user_func('\Ratamarkup\block_'.$current_name, $accumulator, $current_tokens, $options);
+	$output .= call_user_func('\Ratamarkup\block_'.$current_name, 
+				  $accumulator, $current_tokens, $options);
       } else {
 	$output .= block_normal($accumulator, $current_tokens, $options);
       }
@@ -109,14 +140,27 @@ function block_normal_list($data,$char,$opt=array()) {
   }
   $processed = block_normal($sub,array(),$opt);
 
+  $in = array();
+  $out = array();
+  $replaces = array(
+		    '/<([oud])l>/' => '<li><$1l>',
+		    '!</([oud])l>!' => '</$1l></li>',
+		    );
+  foreach ( $replaces as $k => $v ) {
+    array_push($in,$k);
+    array_push($out,$v);
+  }
+
+  $processed = preg_replace($in,$out,$processed);
+
   if ( $type != ':' ) {
     $processed = preg_replace('!(^|\n)<(/?)p>!','$1<$2li>',$processed);
     $processed = preg_replace('/^(?!$)/m',"\t",$processed);
 
     if ( $type == '#' )
-      $processed = "<li><ol>\n$processed\n</ol></li>\n";
+      $processed = "<ol>\n$processed\n</ol>\n";
     else
-      $processed = "<li><ul>\n$processed\n</ul></li>\n";
+      $processed = "<ul>\n$processed\n</ul>\n";
   }
   else {
 
@@ -221,7 +265,6 @@ function block_normal($data, $arg, $opt = array()) {
 			       'marker' => '>',
 			       'name' => 'quote',
 			       'process' => function ($data,$opt) {
-				 print_r($optn);
 				 $data = preg_replace('/^> */m', '', $data);
 				 $text = block_normal($data,array(),$opt);
 				 $output = "<blockquote>\n$text\n</blockquote>\n";
@@ -265,9 +308,9 @@ function block_normal($data, $arg, $opt = array()) {
     if ( $line_marker != $current_marker ) {
 
       if ( is_callable($current['process']) )
-	$output .= $current['process']($accumulator,$opt);
+	$output .= $current['process']($accumulator, $opt);
       else
-	$output .= call_user_func($current['process'], $accumulator,$opt);
+	$output .= call_user_func($current['process'], $accumulator, $opt);
 
       $accumulator = '';
       $current_marker = ($line_marker == 'void') ? '' : $line_marker;
@@ -283,7 +326,10 @@ function block_normal($data, $arg, $opt = array()) {
     $output .= $current['process']($accumulator,$opt);
   }
 
-  if ( sizeof($arg) > 1 ) {
+  if ( $opt['class'] ) {
+    $output = "<div class=\"$opt[class]\">\n$output\n</div>\n";
+  }
+  elseif ( sizeof($arg) > 1 ) {
     $output = "<div class=\"".implode(" ",array_splice($arg,1))."\">\n$output\n</div>\n";
   }
 
@@ -291,7 +337,12 @@ function block_normal($data, $arg, $opt = array()) {
 
 }
 
-function character_normal($line,$opt = array()) {
+function character_normal($line, $opt = array()) {
+
+  if ( $opt === null ) {
+    print "Called with $opt == null, trace follows:\n";
+    print_r( debug_backtrace() );
+  }
 
   if ( ! array_key_exists('link_callback',$opt) ) {
     $link_callback = function ($m) {
@@ -340,5 +391,24 @@ function character_normal($line,$opt = array()) {
 
   return trim($line);
 
+}
+
+
+function parse_tokens_as_config($tokens) {
+
+  $opts = array();
+
+  preg_match_all('/[^ ]+=(?!")[^ ]+|[^ ]+=".*?(?<!\\\\)"|[^ ]+/', implode(" ", $tokens), $matches);
+
+  array_shift($matches[0]);
+
+  foreach ( $matches[0] as $m ) {
+    list($k,$v) = explode('=', $m, 2);
+    $v = preg_replace('/^(?!\\\\)"|(?!\\\\)"$/','', $v);
+    $v = preg_replace('/\\\\"/','"', $v);
+    $opts[$k] = $v;
+  }
+
+  return $opts;
 }
 
