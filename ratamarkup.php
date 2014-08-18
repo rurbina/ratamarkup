@@ -3,28 +3,28 @@ namespace Ratamarkup;
 
 /*
 
-=Ratamarkup
+= Ratamarkup
 
 Procesador de texto orientado a convertir texto plano en HTML correcto. Consta
 de dos partes: un procesador de bloques y una colección de procesadores por
 bloque llamados simplemente bloques.
 
-==Procesador de bloques
+== Procesador de bloques
 Toma un cuerpo de texto y lo divide buscando líneas que contengan un marcador
 de sección (por defecto es §).
 
-==Bloque
+== Bloque
 Cada bloque recibe una serie de parámetros y un cuerpo de texto, y se espera
 que devuelva texto en HTML.
 
-===Bloque normal
+=== Bloque normal
 El bloque normal es el que contiene el afamado Ratamarkup, que se divide en
 dos partes:
 
  * Proceso de párrafos según el caracter inicial de la línea
  * Proceso de formatos de caracter, tomando algunos estándares de otros wikis.
 
-===Otros bloques
+=== Otros bloques
 Basta con definir una función markup_blockname dentro del espacio de nombre
 de Ratamarkup.
 
@@ -140,40 +140,58 @@ function block_normal_list($data,$char,$opt=array()) {
   }
   $processed = block_normal($sub,array(),$opt);
 
-  $in = array();
-  $out = array();
-  $replaces = array(
-		    '/<([oud])l>/' => '<li><$1l>',
-		    '!</([oud])l>!' => '</$1l></li>',
-		    );
-  foreach ( $replaces as $k => $v ) {
-    array_push($in,$k);
-    array_push($out,$v);
-  }
-
-  $processed = preg_replace($in,$out,$processed);
-
   if ( $type != ':' ) {
-    $processed = preg_replace('!(^|\n)<(/?)p>!','$1<$2li>',$processed);
-    $processed = preg_replace('/^(?!$)/m',"\t",$processed);
 
-    if ( $type == '#' )
-      $processed = "<ol>\n$processed\n</ol>\n";
-    else
-      $processed = "<ul>\n$processed\n</ul>\n";
+	  $in = array();
+	  $out = array();
+	  $replaces = array(
+		  '/<([oud])l>/' => '<li><$1l>',
+		  '!</([oud])l>!' => '</$1l></li>',
+	  );
+	  foreach ( $replaces as $k => $v ) {
+		  array_push($in,$k);
+		  array_push($out,$v);
+	  }
+
+	  $processed = preg_replace($in,$out,$processed);
+
+	  $processed = preg_replace('!(^|\n)<(/?)p>!','$1<$2li>',$processed);
+	  $processed = preg_replace('/^(?!$)/m',"\t",$processed);
+
+	  $processed = preg_replace('!</ol></li>(\s+)<li><ol>!s', "\n", $processed);
+
+	  if ( $type == '#' )
+		  $processed = "<ol>\n$processed\n</ol>\n";
+	  else {
+		  $processed = "<ul>\n$processed\n</ul>\n";
+	  }
+
   }
   else {
 
-    $processed = preg_replace('!\n\t!','',$processed);
-    $processed = preg_replace('!\n</p>!','</p>',$processed);
+	  $in = array();
+	  $out = array();
+	  $replaces = array(
+		  '/<([oud])l>/' => "<dd><\$1l>\n",
+		  '!</([oud])l>!' => "</\$1l></dd>\n",
+	  );
+	  foreach ( $replaces as $k => $v ) {
+		  array_push($in,$k);
+		  array_push($out,$v);
+	  }
 
-    $processed = preg_replace('#(?<=^|\n)<p>(.*?)(?<!\\\\)::(.*?)</p>#','<dt>$1</dt><dd>$2</dd>', $processed);
-    $processed = preg_replace('#(?<=^|\n)<p>([^\n]*?)</p>#','<dt>$1</dt>',$processed);
-    $processed = preg_replace('#(?<=^|\n)<dt>\s+</dt>#','',$processed);
-    $processed = preg_replace('#\\n\\n+#','',$processed);
-    $processed = preg_replace('#(?<=^|\n)<#',"\t<",$processed);
+	  $processed = preg_replace($in,$out,$processed);
 
-    $processed = "<dl>\n$processed\n</dl>\n";
+	  $processed = preg_replace('!\n\t!','',$processed);
+	  $processed = preg_replace('!\n</p>!','</p>',$processed);
+
+	  $processed = preg_replace('#^<p>(.*?)(?<!\\\\)::(.*?)</p>#m',"<dt>\$1</dt><dd>\$2</dd>\n", $processed);
+	  $processed = preg_replace('#^<p>([^\n]*?)</p>#m',"<dd>\$1</dd>\n",$processed);
+	  $processed = preg_replace('#^<dt>\s+</dt>#m','',$processed);
+	  $processed = preg_replace('#\\n\\n+#','',$processed);
+	  $processed = preg_replace('#(?<=^|\n)<#',"\t<",$processed);
+
+	  $processed = "<dl>\n$processed\n</dl>\n";
   }
   
   $processed = preg_replace('#\n+#s',"\n",$processed);
@@ -278,7 +296,7 @@ function block_normal($data, $arg, $opt = array()) {
 				 $output = '';
 				 foreach (explode("\n",$data) as $line) {
 				   $line = preg_replace('/^!/','',$line);
-				   $output .= $line ? "<!-- $line -->\n" : "\n";
+				   $output .= $line ? "<!-- $line -->\n<a>$line</a>\n" : "\n";
 				 }
 				 return $output;
 			       }
@@ -373,8 +391,9 @@ function character_normal($line, $opt = array()) {
 		 '/(?<!\\\\)\\^\\^(.*?)(?<!\\\\)\\^\\^/' => '<sup>$1</sup>',
 		 '/(?<!\\\\)[[]{2}([^<>&|]+?)(?<!\\\\)[]]{2}/'                      => $link_callback,
 		 '/(?<!\\\\)[[]{2}([^<>&]+?)(?<!\\\\)[|]([^<>&]+?)(?<!\\\\)[]]{2}/' => $link_callback,
-		 '/(?<!\\\\)[{]{2}([^<>&]+?)(?<!\\\\)[|](.*?)(?<!\\\\)[}]{2}/' => '<img src="$1" alt="$2" title="$2">',
-		 '/(?<!\\\\)[{]{2}(.*?)(?<!\\\\)[}]{2}/'                  => '<img src="$1" alt="$1"/>',
+		 '/(?<!\\\\)[{]{2}([^<>&]+?)(?<!\\\\)[|](.*?)[|](.*?)(?<!\\\\)[}]{2}/' => '<img src="$1" $2 alt="$3" title="$3">',
+		 '/(?<!\\\\)[{]{2}([^<>&]+?)(?<!\\\\)[|](.*?)(?<!\\\\)[}]{2}/'         => '<img src="$1" alt="$2" title="$2">',
+		 '/(?<!\\\\)[{]{2}(.*?)(?<!\\\\)[}]{2}/'                               => '<img src="$1" alt="$1"/>',
 		 '/(?<!\\\\)---/'             => '&mdash;',
 		 '/(?<!\\\\)--/'              => '&ndash;',
 		 '/\\\\([{}\'"_^-]|\\[|\\])/' => '$1',
