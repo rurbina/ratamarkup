@@ -1,12 +1,51 @@
 #lang racket/base
 
-(provide ratamarkup)
+(provide ratamarkup
+         (rename-out [inline-processors ratamarkup-inline-processors]
+                     [link-callback     ratamarkup-link-callback]))
 (require racket/string
          racket/list
          xml)
 
-(define (d/f str rest) (display (format str rest)))
+(define link-callback (lambda (link)
+                        (let ([m (flatten (regexp-match* "^\\[\\[(.*)?(?<!\\\\)\\|(.*?)(?<!\\\\)\\|(.*?)]]$"
+                                                link
+                                                #:match-select cdr
+                                                ))])
+                          (format "<a href=\"~a\"~a>~a</a>"
+                                  (first m)
+                                  (if (= (string-length (second m)) 0) "" 
+                                      (string-append " " (regexp-replace* #px"&quot;" (second m) "\"")))
+                                  (third m)))))
 
+
+(define inline-processors
+  '([#px"&" "\\&amp;"]
+    [#px"<" "\\&lt;"]
+    [#px">" "\\&gt;"]
+    [#px"\"" "\\&quot;"]
+    [#px"(?<!')(?<!\\\\)'{4,5}([^']+)(?<!\\\\)'{4,5}(?!')" "<b><i>\\1</i></b>"]
+    [#px"(?<=\\b)(?<!\\\\)__(.*?)(?<!\\\\)__(?=$|\\b)" "<u>\\1</u>"]
+    [#px"(?<=\\b)(?<!\\\\)_-(.*?)(?<!\\\\)-_(?=$|\\b)" "<s>\\1</s>"]
+    [#px"(?<=\\b)(?<!\\\\)&quot;&quot;(.*?)(?<!\\\\)&quot;&quot;(?=$|\\b)" "<s>\\1</s>"]
+    [#px"(?<!\\\\)\\[\\[([^]|]+|\\\\\\])\\]\\]" "[[\\1||\\1]]"]
+    [#px"(?<!\\\\)\\[\\[([^]|]+|\\\\\\])\\]\\]" "[[\\1||\\1]]"]
+    [#px"(?<!\\\\)\\[\\[([^]|]+|\\\\\\]|\\\\\\|)\\|([^]|]+|\\\\\\])\\]\\]" "[[\\1||\\2]]"]
+    [#px"(?<!')'{3}([^']+)'{3}(?!')" "<b>\\1</b>"]
+    [#px"(?<!')'{2}([^']+)'{2}(?!')" "<i>\\1</i>"]
+    [#px"\\\\(['{}|_^]|\\[|\\]|&quot;)" "\\1"]))
+
+(define (ratamarkup-inline text)
+  (string-join 
+   (map (lambda (line)
+          (let ([stage1 (regexp-replaces line inline-processors)]
+                [links null])
+            (set! links (regexp-match* #px"\\[\\[.*?(?<!\\\\)\\]\\]" stage1))
+            (for ([link links]) (set! stage1 (string-replace stage1 link (link-callback link))))
+            stage1))
+        (string-split text "\n"))
+   "\n"))
+  
 (define (compress items)
   (filter (lambda (x) (not (empty? (second x))))
                  (let ([out (list)] [acc '()] [type 'void])
@@ -60,22 +99,19 @@
      lines)
     (string-join
      (map (lambda (p)
-            (d/f "---- ~v\n" (first p))
             ((hash-ref section-processors (first p)) (string-join (second p) "\n")))
           (compress paragraphs))
      "")))
-
 
 (define section-processors
   (hash 
    'table   process-table
    'std     process-std
-   'para    (lambda (text) (format "<p>\n~a\n</p>\n" (regexp-replace #px"(?m:^)" "\t" text)))
+   'para    (lambda (text) (format "<p>\n\t~a\n</p>\n" (string-replace (ratamarkup-inline text) "\n" "\n\t" )))
    'void    (lambda (text) "")
    'heading (lambda (text)
               (string-join
                (map (lambda (line)
-                      (d/f "-- heading: ~v\n" line)
                       (let ([lvl (string-length (car (regexp-match #px"(?s:^=+)" line)))])
                         (set! lvl (min 6 lvl))
                         (string-join
@@ -153,5 +189,6 @@
             ((hash-ref section-processors (rm-section-type section) default-proc)
              (rm-section-body section)
              #:tokens (rm-section-tokens section)))
-          sections))))
+          sections)
+     "")))
 
