@@ -229,129 +229,153 @@ function block_normal_table($data,$char,$opt=array()) {
 
 function block_normal($data, $arg, $opt = array()) {
 
-  $blocks = array(
-		  '#' => array(
-			       'marker' => '#',
-			       'name' => 'orderedlist',
-			       'process' => function ($data,$opt) { return block_normal_list($data,$opt); },
-			       ),
-		  '*' => array(
-			       'marker' => '*',
-			       'name' => 'unorderedlist',
-			       'process' => function ($data,$opt) { return block_normal_list($data,$opt); },
-			       ),
-		  ':' => array(
-			       'marker' => ':',
-			       'name' => 'deflist',
-			       'process' => function ($data,$opt) { return block_normal_list($data,$opt); },
-			       ),
-		  '' => array(
-			      'marker' => '',
-			      'name' => 'paragraph',
-			      'process' => function ($data,$opt) {
+	$blocks = array(
+		'#' => array(
+			'marker' => '#',
+			'name' => 'orderedlist',
+			'process' => function ($data,$opt) { return block_normal_list($data,$opt); },
+		),
+		'-' => array(
+			'marker' => '-',
+			'name' => 'unorderedlist',
+			'process' => function ($data,$opt) { return block_normal_list($data,$opt); },
+		),
+		':' => array(
+			'marker' => ':',
+			'name' => 'deflist',
+			'process' => function ($data,$opt) { return block_normal_list($data,$opt); },
+		),
+		'' => array(
+			'marker' => '',
+			'name' => 'paragraph',
+			'process' => function ($data,$opt) {
 				if ( !strlen($data) ) return "\n";
 				$output = "<p>\n";
 				foreach ( explode("\n",$data) as $line ) {
-				  if ( !strlen($line) ) continue;
-				  $output .= "\t".( $opt['no_char'] ? $line : character_normal($line,$opt) )."\n";
+					if ( !strlen($line) ) continue;
+					$output .= "\t".( $opt['no_char'] ? $line : character_normal($line,$opt) )."\n";
 				}
 				$output .= "</p>\n";
 				return $output;
-			      }
-			      ),
-		  '=' => array(
-			       'marker' => '=',
-			       'name' => 'heading',
-			       'process' => function ($data,$opt) {
-				 $output = '';
-				 foreach (explode("\n",$data) as $line) {
-				   if ( !preg_match('/^(=+)(.*?)(=*)$/',$line,$matches) ) continue;
-				   $lvl = strlen($matches[1]) + $opt['header_offset'];
-				   if ( $lvl < 1 ) $lvl = 1;
-				   if ( $lvl > 6 ) $lvl = 6;
-				   $output .= "<h$lvl>".( $opt['no_char'] ? $matches[2] : character_normal($matches[2],$opt) )."</h$lvl>\n";
-				 }
-				 return $output;
-			       }
-			       ),
-		  '|' => array(
-			       'marker' => '|',
-			       'name' => 'table',
-			       'process' => function ($data,$opt) { return block_normal_table($data,$opt); },
-			       ),
-		  '>' => array(
-			       'marker' => '>',
-			       'name' => 'quote',
-			       'process' => function ($data,$opt) {
-				 $data = preg_replace('/^> */m', '', $data);
-				 $text = block_normal($data,array(),$opt);
-				 $output = "<blockquote>\n$text\n</blockquote>\n";
-				 return $output;
-			       },
-			       ),
-		  '!' => array(
-			       'marker' => '!',
-			       'name' => 'comment',
-			       'process' => function ($data,$opt) {
-				 $output = '';
-				 foreach (explode("\n",$data) as $line) {
-				   $line = preg_replace('/^!/','',$line);
-				   $output .= $line ? "<!-- $line -->\n<a>$line</a>\n" : "\n";
-				 }
-				 return $output;
-			       }
-			       ),
-		  );
-  $valid_markers = array_keys($blocks);
+			}
+		),
+		'=' => array(
+			'marker' => '=',
+			'name' => 'heading',
+			'process' => function ($data,$opt) {
+				$output = '';
+				foreach (explode("\n",$data) as $line) {
+					if ( !preg_match('/^(=+)(.*?)(=*)$/',$line,$matches) ) continue;
+					$lvl = strlen($matches[1]) + $opt['header_offset'];
+					if ( $lvl < 1 ) $lvl = 1;
+					if ( $lvl > 6 ) $lvl = 6;
+					$output .= "<h$lvl>".( $opt['no_char'] ? $matches[2] : character_normal($matches[2],$opt) )."</h$lvl>\n";
+				}
+				return $output;
+			}
+		),
+		'|' => array(
+			'marker' => '|',
+			'name' => 'table',
+			'process' => function ($data,$opt) { return block_normal_table($data,$opt); },
+		),
+		'>' => array(
+			'marker' => '>',
+			'name' => 'quote',
+			'process' => function ($data,$opt) {
+				$data = preg_replace('/^> */m', '', $data);
+				$text = block_normal($data,array(),$opt);
+				$output = "<blockquote>\n$text\n</blockquote>\n";
+				return $output;
+			},
+		),
+		'!' => array(
+			'marker' => '!',
+			'name' => 'comment',
+			'process' => function ($data,$opt) {
+				$output = '';
+				foreach (explode("\n",$data) as $line) {
+					$line = preg_replace('/^!/','',$line);
+					$output .= $line ? "<!-- $line -->\n<a>$line</a>\n" : "\n";
+				}
+				return $output;
+			}
+		),
+	);
+	$valid_markers = array_keys($blocks);
 
-  $current_marker = '';
-  $current = $blocks[''];
-  $accumulator = '';
-  $output = '';
+	$current_marker = '';
+	$current = $blocks[''];
+	$accumulator = '';
+	$output = '';
 
-  $lines = explode("\n",$data);
+	$lines = explode("\n",$data);
 
-  foreach ( $lines as $line ) {
+	foreach ( $lines as $line ) {
 
-    if ( strlen($line) > 0 ) {
-      $line_marker = $line[0];
-    } else {
-      $line_marker = 'void';
-    }
+		// compatibilidad con encabezados que comienzan con *
+		// y con listas que comienzan con -
+		// para que la migración a racket sea suave
+		if ( preg_match('/^[*+-]/', $line) ) {
+			if ( preg_match('/^[*]+.*[*]+$/', $line) ) {
+				$line = preg_replace_callback(
+					'/^([*]+)|([*]+)$/',
+					function ($t) {
+						foreach ($t as $k => $v) {
+							return str_replace("*","=",$v);
+						}
+					},
+					$line
+				);
+			}
+			else {
+				$line = preg_replace_callback(
+					'/^[*+-]+/',
+					function ($t) { return strtr($t[0], "*+-","---"); },
+					$line
+				);
+			}
+		}
 
-    if ( array_search($line_marker, $valid_markers) === false && $line_marker != 'void' ) {
-      $line_marker = '';
-    }
+		if ( strlen($line) > 0 ) {
+			$line_marker = $line[0];
+		} else {
+			$line_marker = 'void';
+		}
 
-    if ( $line_marker != $current_marker ) {
+		if ( array_search($line_marker, $valid_markers) === false && $line_marker != 'void' ) {
+			$line_marker = '';
+		}
 
-      if ( is_callable($current['process']) )
-	$output .= $current['process']($accumulator, $opt);
-      else
-	$output .= call_user_func($current['process'], $accumulator, $opt);
+		if ( $line_marker != $current_marker ) {
 
-      $accumulator = '';
-      $current_marker = ($line_marker == 'void') ? '' : $line_marker;
-      $current = $blocks[$current_marker];
-    }
+			if ( is_callable($current['process']) )
+				$output .= $current['process']($accumulator, $opt);
+			else
+				$output .= call_user_func($current['process'], $accumulator, $opt);
+
+			$accumulator = '';
+			$current_marker = ($line_marker == 'void') ? '' : $line_marker;
+			$current = $blocks[$current_marker];
+		}
     
-    if ( $line_marker != 'void' )
-      $accumulator .= "$line\n";
+		if ( $line_marker != 'void' )
+			$accumulator .= "$line\n";
 
-  }
+	}
 
-  if ( $accumulator != '' ) {
-    $output .= $current['process']($accumulator,$opt);
-  }
+	if ( $accumulator != '' ) {
+		$output .= $current['process']($accumulator,$opt);
+	}
 
-  if ( $opt['class'] ) {
-    $output = "<div class=\"$opt[class]\">\n$output\n</div>\n";
-  }
-  elseif ( sizeof($arg) > 1 ) {
-    $output = "<div class=\"".implode(" ",array_splice($arg,1))."\">\n$output\n</div>\n";
-  }
+	if ( $opt['class'] ) {
+		$output = "<div class=\"$opt[class]\">\n$output\n</div>\n";
+	}
+	elseif ( sizeof($arg) > 1 ) {
+		$output = "<div class=\"".implode(" ",array_splice($arg,1))."\">\n$output\n</div>\n";
+	}
 
-  return $output;
+	return $output;
 
 }
 
@@ -386,6 +410,8 @@ function character_normal($line, $opt = array()) {
 		 "/(?<!\\\\)'''(.*?)(?<!\\\\)'''/"       => '<b>$1</b>',
 		 "/(?<!\\\\)''(.*?)(?<!\\\\)''/"         => '<i>$1</i>',
 		 '/(?<!\\\\)""(.*?)(?<!\\\\)""/'         => '<tt>$1</tt>',
+		 '/(?<!\\\\)`(.*?)(?<!\\\\)`/'           => '<code>$1</code>',
+		 '/(?<!\\\\)``(.*?)(?<!\\\\)``/'         => '<code>$1</code>',
 		 '/(?<!\\\\)__(.*?)(?<!\\\\)__/'         => '<u>$1</u>',
 		 '/(?<!\\\\)_-(.*?)(?<!\\\\)-_/'         => '<s>$1</s>',
 		 '/(?<!\\\\)\\^\\^(.*?)(?<!\\\\)\\^\\^/' => '<sup>$1</sup>',
