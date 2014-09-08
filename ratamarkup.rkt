@@ -33,11 +33,10 @@
                                   (third m)))))
 
 (define image-callback (lambda (link #:options [options null])
-                        (let ([m (flatten (regexp-match* "^\\{\\{(.*?)(?<!\\\\)\\|(.*?)(?<!\\\\)\\|(.*?)(?<!\\\\)\\}\\}$"
+                        (let ([m (flatten (regexp-match* "^\\{\\{(.*)?(?<!\\\\)\\|(.*?)(?<!\\\\)\\|(.*?)}}$"
                                                 link
                                                 #:match-select cdr
                                                 ))])
-                          (printf "[33m@ratamarkup@image-callback[m: img is ~v => ~v\n" link m)
                           (format "<img src=\"~a\" title=\"~a\" alt=\"~a\"~a>"
                                   (first m)
                                   (third m)
@@ -57,11 +56,9 @@
     [#px"(?<=\\b)(?<!\\\\)_-(.*?)(?<!\\\\)-_(?=$|\\b)" "<s>\\1</s>"]
     [#px"(?<=\\b)(?<!\\\\)&quot;&quot;(.*?)(?<!\\\\)&quot;&quot;(?=$|\\b)" "<s>\\1</s>"]
     [#px"(?<!\\\\)\\[\\[([^]|]+|\\\\\\])\\]\\]" "[[\\1||\\1]]"]
-    [#px"(?<!\\\\)\\[\\[([^]|]+|\\\\\\])\\]\\]" "[[\\1||\\1]]"]
     [#px"(?<!\\\\)\\[\\[([^]|]+|\\\\\\]|\\\\\\|)\\|([^]|]+|\\\\\\])\\]\\]" "[[\\1||\\2]]"]
-    [#px"(?<!\\\\)\\{\\{([^]|]+|\\\\\\])\\}\\}" "{{\\1||\\1}}"]
-    [#px"(?<!\\\\)\\{\\{([^]|]+|\\\\\\])\\}\\}" "{{\\1||\\1}}"]
-    [#px"(?<!\\\\)\\{\\{([^|]+|\\\\\\})\\|(.*?)(?<!\\\\)\\}\\}" "{{\\1||\\2}}"]
+    [#px"(?<!\\\\)\\{\\{([^}|]+|\\\\\\})\\}\\}" "{{\\1||\\1}}"]
+    [#px"(?<!\\\\)\\{\\{([^}|]+|\\\\\\}|\\\\\\|)\\|([^}|]+|\\\\\\})\\}\\}" "{{\\1||\\2}}"]
     [#px"(?<!')'{3}([^']+)'{3}(?!')" "<b>\\1</b>"]
     [#px"(?<!')'{2}([^']+)'{2}(?!')" "<i>\\1</i>"]
     [#px"\\\\(['{}|_^`]|\\[|\\]|&quot;)" "\\1"]
@@ -193,7 +190,9 @@
      [bquote  .,(lambda (text #:options [options (hash)] #:tokens [tokens (list)])
                   (format "<blockquote>~a</blockquote>\n\n"
                           (regexp-replace #px"(?m:^)"
-                                          (process-std (regexp-replace* #px"(?m:^> ?)" text ""))
+                                          (process-std (regexp-replace* #px"(?m:^> ?)" text "")
+                                                       #:options options
+                                                       #:tokens tokens)
                                           "\t")))]
      [dlist   . ,process-dlist]
      [olist   . ,process-olist]
@@ -307,7 +306,7 @@
 ; sectionize and process sections
 (define (ratamarkup text
                     #:default [default-type 'std]
-                    #:options  [options (make-hash '((version 1.0)))])
+                    #:options [options (make-hash '((version 1.0)))])
   (let ([sections (sectionize text default-type)] [output ""]
         [default-fn (hash-ref section-processors default-type)])
     (string-append*
