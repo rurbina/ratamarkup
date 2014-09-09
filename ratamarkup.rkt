@@ -168,7 +168,7 @@ For examples in these matters check out https://github.com/rurbina/geeklog
 (define paragraph-types
   (hash
    #px"^[|]" 'table
-   #px"^=|^[*=].*[*=]$" 'heading
+   #px"^=|^[*=].*?[*=]*$" 'heading
    #px"^!" 'comment
    #px"^>" 'bquote
    #px"^(\\s*[+:-]|\\s+[*]).*?[:]{2}" 'dlist
@@ -350,10 +350,12 @@ For examples in these matters check out https://github.com/rurbina/geeklog
                         (string-join
                          (list (format "<h~a>" lvl)
                                (string-replace
-                                (xexpr->string
+                                (ratamarkup-inline 
                                  (regexp-replace
                                   #px"(?s:^[*=]+\\s*(.*?)\\s*[*=]*$)"
-                                  line "\\1"))
+                                  line
+                                  "\\1")
+                                 #:options options)
                                 "\n" "")
                                (format "</h~a>" lvl))
                          "")))
