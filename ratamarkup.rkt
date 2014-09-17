@@ -172,7 +172,7 @@ For examples in these matters check out https://github.com/rurbina/geeklog
    #px"^>" 'bquote
    #px"^(\\s*[+:-]|\\s+[*]).*?[:]{2}" 'dlist
    #px"^\\s*:" 'dlist
-   #px"^(\\s*[+-]|\\s+[*]).*" 'ulist
+   #px"^(\\s*[+-]|\\s+[*])(?!\\1).*" 'ulist
    #px"^\\s*\\d+[.()]|^\\s*#" 'olist
    #px"^\\s{2,}\\S+" 'continue-list
    #px"^$" 'void))
