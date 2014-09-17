@@ -135,6 +135,8 @@ For examples in these matters check out https://github.com/rurbina/geeklog
     [#px"(?<!')'{3}([^']+)'{3}(?!')" "<b>\\1</b>"]
     [#px"(?<!')'{2}([^']+)'{2}(?!')" "<i>\\1</i>"]
     [#px"\\\\(['{}|_^`]|\\[|\\]|&quot;)" "\\1"]
+    [#px"-{3}" "&mdash;"]
+    [#px"-{2}" "&ndash;"]
     [#px"^\\s+|\\s+$" ""]))
 
 (define (ratamarkup-inline text
