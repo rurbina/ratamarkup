@@ -55,7 +55,6 @@ For examples in these matters check out https://github.com/rurbina/geeklog
          racket/set
          xml)
 
-;; ----------------------------------------------------------------------------
 ;; Main function
 
 (define (ratamarkup text
@@ -72,7 +71,6 @@ For examples in these matters check out https://github.com/rurbina/geeklog
         #:options options
         #:tokens (rm-section-tokens section))))))
 
-;; ----------------------------------------------------------------------------
 ;; Inline processing
 
 (define (set!-link-callback  f) (set! link-callback  f))
@@ -162,7 +160,6 @@ For examples in these matters check out https://github.com/rurbina/geeklog
         (string-split text "\n"))
    "\n"))
 
-;; ----------------------------------------------------------------------------
 ;; Block processing
 
 (define paragraph-types
@@ -244,9 +241,24 @@ For examples in these matters check out https://github.com/rurbina/geeklog
                        #:options [options (hash)]
                        #:tokens [tokens (list)])
   (let ([items 
-         (for/list ([item (process-list-itemize text)])
+         (for/list ([item (process-list-compress (process-list-itemize text))])
            (if (list? item)
-               (format "\t<dd>~v</dd>\n" item)
+               (if (regexp-match? #px"[::]{2}" (first item))
+                   (format "\t<dt>~a</dt><dd>~a</dd>\n"
+                           (ratamarkup-inline
+                            (first 
+                             (regexp-match #px"^.*?(?=\\s*?[:]{2})" (first item)))
+                            #:options options)
+                           (process-std
+                            (string-join
+                             (flatten (list 
+                                       (first (regexp-match #px"(?<=[:]{2}).*" (first item)))
+                                       (drop item 1)))
+                             "\n")
+                            #:options options))
+                   (format "\t<dd>~a</dd>\n"
+                           (process-std (string-join item "\n")
+                                        #:options options)))
                (if (regexp-match? #px"[:]{2}" item)
                    (format "\t<dt>~a</dt><dd>~a</dd>\n"
                            (ratamarkup-inline
@@ -267,9 +279,14 @@ For examples in these matters check out https://github.com/rurbina/geeklog
 (define (process-olist text
                        #:options [options (hash)]
                        #:tokens [tokens (list)])
-  (let ([items (for/list ([item (process-list-itemize text)])
+  (let ([items (for/list ([item (process-list-compress (process-list-itemize text))])
                  (if (list? item)
-                     (format "\t<li>~v</li>\n" item)
+                     (format "\t<li>\n~a\n\t</li>\n" 
+                             (regexp-replace*
+                              #px"(?sm:^)"
+                              (process-std (string-join item "\n")
+                                           #:options options)
+                              "\t\t"))
                      (format "\t<li>~a</li>\n"
                              (ratamarkup-inline item #:options options))))])
     (string-join
@@ -281,9 +298,14 @@ For examples in these matters check out https://github.com/rurbina/geeklog
 (define (process-ulist text
                        #:options [options (hash)]
                        #:tokens [tokens (list)])
-  (let ([items (for/list ([item (process-list-itemize text)])
+  (let ([items (for/list ([item (process-list-compress (process-list-itemize text))])
                  (if (list? item)
-                     (format "\t<li>~v</li>\n" item)
+                     (format "\t<li>\n~a\n\t</li>\n" 
+                             (regexp-replace*
+                              #px"(?sm:^)"
+                              (process-std (string-join item "\n")
+                                           #:options options)
+                              "\t\t"))
                      (format "\t<li>~a</li>\n" 
                              (ratamarkup-inline item #:options options))))])
     (string-join
@@ -291,6 +313,19 @@ For examples in these matters check out https://github.com/rurbina/geeklog
      ""
      #:before-first "<ul>\n"
      #:after-last "</ul>\n\n")))
+
+(define (process-list-compress [items '()])
+  (let ([output (list)])
+    (for ([item items])
+      (if [and (list? item)
+               (list? output)
+               (not (empty? output))]
+          (set! output (append (take output (sub1 (length output)))
+                               (if (list? (last output))
+                                   (list (append (last output) item))
+                                   (list (list (last output) (first item))))))
+          (set! output (append output (list item)))))
+    output))
 
 (define (process-list-itemize text)
   (let ([leadup (flatten (regexp-match* #px"(?s:^\\s*([+:*-]|\\d+[.)]|#))"
@@ -315,7 +350,6 @@ For examples in these matters check out https://github.com/rurbina/geeklog
                           "")
           (list line)))))
 
-;; ----------------------------------------------------------------------------
 ;; Section processing
 
 (define section-processors
@@ -367,7 +401,6 @@ For examples in these matters check out https://github.com/rurbina/geeklog
 (define (add-section-processor key value)
   (hash-set! section-processors key value))
 
-;; ----------------------------------------------------------------------------
 ;; Utility functions
 
 (define (compress items)
