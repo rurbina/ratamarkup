@@ -347,8 +347,9 @@ For examples in these matters check out https://github.com/rurbina/geeklog
           (pregexp leader-regexp))
     (for/list ([line (string-split text "\n")])
       (if (regexp-match leader-regexp line)
+
           (regexp-replace #px"^\\s*" 
-                          (substring line (string-length leader))
+                          (regexp-replace leader-regexp line "")
                           "")
           (list line)))))
 
