@@ -382,15 +382,19 @@ For examples in these matters check out https://github.com/rurbina/geeklog
                     (for/list ([line (string-split text "\n")])
                       (let ([lvl
                              (string-length (car (regexp-match #px"(?s:^[*=]+)"
-                                                               line)))])
+                                                               line)))]
+                            [parts (regexp-split #px" *§ *" line)]
+                            [id ""])
                         (set! lvl (min 6 lvl))
+                        (when (>= (length parts) 2)
+                          (set! id (format " id=\"~a\"" (second parts))))
                         (string-join
-                         (list (format "<h~a>" lvl)
+                         (list (format "<h~a~a>" lvl id)
                                (string-replace
                                 (ratamarkup-inline 
                                  (regexp-replace
                                   #px"(?s:^[*=]+\\s*(.*?)\\s*[*=]*$)"
-                                  line
+                                  (car parts)
                                   "\\1")
                                  #:options options)
                                 "\n" "")
