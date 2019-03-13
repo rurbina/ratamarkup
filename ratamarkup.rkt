@@ -118,12 +118,14 @@ For examples in these matters check out https://github.com/rurbina/geeklog
     [#px"\"" "\\&quot;"]
     [#px"\\\\\\\\" "\\&#92;"]
     [#px"(?<!\\\\)(`+)\\s*(.*?)\\s*(?<!\\\\)\\1" "<code>\\2</code>"]
+    [#px"(?<=^|\\s)/(\\S[^/]*?\\S)/(?=$|[:]|\\s)" "<i>\\1</i>"]
     [#px"(?<!')(?<!\\\\)'{4,5}([^']+)(?<!\\\\)'{4,5}(?!')"
         "<b><i>\\1</i></b>"]
     [#px"(?<=\\b)(?<!\\\\)__(.*?)(?<!\\\\)__(?=$|\\b)" "<u>\\1</u>"]
     [#px"(?<=\\b)(?<!\\\\)_-(.*?)(?<!\\\\)-_(?=$|\\b)" "<s>\\1</s>"]
     [#px"(?<=\\b)(?<!\\\\)&quot;&quot;(.*?)(?<!\\\\)&quot;&quot;(?=$|\\b)"
         "<s>\\1</s>"]
+    [#px"(?<!\\\\)\\[\\[(.*?)\\]\\[(.*?)\\]\\]" "[[\\1||\\2]]"]
     [#px"(?<!\\\\)\\[\\[([^]|]+|\\\\\\])\\]\\]"
         "[[\\1||\\1]]"]
     [#px"(?<!\\\\)\\[\\[([^]|]+|\\\\\\]|\\\\\\|)\\|([^]|]+|\\\\\\])\\]\\]"
@@ -165,17 +167,16 @@ For examples in these matters check out https://github.com/rurbina/geeklog
 ;; Block processing
 
 (define paragraph-types
-  (hash
-   #px"^[|]" 'table
-   #px"^=|^[*=].*?[*=]*$" 'heading
-   #px"^!" 'comment
-   #px"^>" 'bquote
-   #px"^(\\s*[+:-]|\\s+[*]).*?[:]{2}" 'dlist
-   #px"^\\s*:" 'dlist
-   #px"^(\\s*[+-]|\\s+[*])(?!\\1).*" 'ulist
-   #px"^\\s*\\d+[.()]|^\\s*#" 'olist
-   #px"^\\s{2,}\\S+" 'continue-list
-   #px"^$" 'void))
+  (list (cons #px"^[|]" 'table)
+        (cons #px"^=|^[*=].*?[*=]*$" 'heading)
+        (cons #px"^!" 'comment)
+        (cons #px"^>" 'bquote)
+        (cons #px"^(\\s*[+:-]|\\s+[*]).*?:{2}" 'dlist)
+        (cons #px"^\\s*:" 'dlist)
+        (cons #px"^(\\s*[+-]|\\s+[*])(?!\\1).*" 'ulist)
+        (cons #px"^\\s*\\d+[.()]|^\\s*#" 'olist)
+        (cons #px"^\\s{2,}\\S+" 'continue-list)
+        (cons #px"^$" 'void)))
 
 (define (process-std text
                      #:options [options (hash)]
@@ -184,16 +185,17 @@ For examples in these matters check out https://github.com/rurbina/geeklog
     (set! lines (regexp-split #px"\n" text))
     (map
      (lambda (line)
-       (let ([type 'para])
-         (for ([pattern (hash-keys paragraph-types)]
+       (let ([type 'none])
+         (for ([pair paragraph-types]
                #:unless (and (not (empty? paragraphs))
-                             (eq? (hash-ref paragraph-types pattern)
+                             (eq? (cdr pair)
                                   'continue-list)
                              (not (set-member? '(dlist ulist olist)
                                                (car (last paragraphs)))))
-               #:break (not (eq? type 'para)))
-           (when (regexp-match? pattern line)
-             (set! type (hash-ref paragraph-types pattern))))
+               #:break (not (eq? type 'none)))
+           (when (regexp-match? (car pair) line)
+             (set! type (cdr pair))))
+         (when (eq? type 'none) (set! type 'para))
          (when (eq? type 'continue-list)
            (if (empty? paragraphs)
                (set! type 'para)
