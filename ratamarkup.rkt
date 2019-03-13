@@ -118,7 +118,7 @@ For examples in these matters check out https://github.com/rurbina/geeklog
     [#px"\"" "\\&quot;"]
     [#px"\\\\\\\\" "\\&#92;"]
     [#px"(?<!\\\\)(`+)\\s*(.*?)\\s*(?<!\\\\)\\1" "<code>\\2</code>"]
-    [#px"(?<=^|\\s)/(\\S[^/]*?\\S)/(?=$|[:]|\\s)" "<i>\\1</i>"]
+    [#px"(?<=^|\\s)/([\\S¿¡][^/]*?[\\S!?])/(?=$|[:,.]|\\s)" "<i>\\1</i>"]
     [#px"(?<!')(?<!\\\\)'{4,5}([^']+)(?<!\\\\)'{4,5}(?!')"
         "<b><i>\\1</i></b>"]
     [#px"(?<=\\b)(?<!\\\\)__(.*?)(?<!\\\\)__(?=$|\\b)" "<u>\\1</u>"]
@@ -139,6 +139,8 @@ For examples in these matters check out https://github.com/rurbina/geeklog
     [#px"\\\\(['{}|_^`]|\\[|\\]|&quot;)" "\\1"]
     [#px"-{3}" "\\&mdash;"]
     [#px"-{2}" "\\&ndash;"]
+    [#px"(?<!\\\\)\\^\\{([^}]+)\\}" "<sup>\\1</sup>"]
+    [#px"(?<!\\\\)\\_\\{([^}]+)\\}" "<sub>\\1</sub>"]
     [#px"^\\s+|\\s+$" ""]))
 
 (define (ratamarkup-inline text
