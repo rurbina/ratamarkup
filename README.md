@@ -1,10 +1,8 @@
 Ratamarkup
 ----------
 
-Ratamarkup is yet another simple markup language. This was originally developed for a Wiki software back in 2002 and has been evolving because I'm not yet satisfied with it.
+Ratamarkup is a very simple markup language, like Markdown and WikiWiki. It's main feature is that you can define a section and specify a parser for it, so you could actually use CommonMark, Markdown, Wiki, plain HTML or whatever markup language you want. Most importantly, you can define a custom parser for your block, so you could fill a block with audio file urls and get an embeded media player.
 
-It actually has two layers: you may use the core language as it is, which is inspired by MediaWiki, Ward's wiki and Emacs' Org mode. Or you can insert what I call "sections", which basically are formatted with a callback that you provide. If you write the proper callback then you could be using anything: plain text, bare HTML, Markdown...
+It's made in Racket. A standalone stdin filter exists but it's not maintained. There's also a legacy php implementation on the repo, the core of it is pretty much functional but has no new modules.
 
-It is so because then you can write a section handler (plugin) for, say, embedding a YouTube video, a SoundCloud track list, Facebook blocks and whatnot.
-
-The main application is geeklog, but I've used it in several other web apps.
+It's currently meant to be used for web apps, I use it in my other projects.
