@@ -1,14 +1,9 @@
-#!/usr/bin/php
-<?php
+#! env racket
+#lang racket
 
-include_once('ratamarkup.php');
+(require ratamarkup/ratamarkup)
 
-$lines = '';
-
-while ( $line = fgets(STDIN) ) {
-		$lines .= $line;
-}
-
-$output = \Ratamarkup\process($lines);
-
-echo $output;
+(let ([intext (port->string)]
+      [outtext ""])
+  (set! outtext (ratamarkup intext))
+  (display outtext))
